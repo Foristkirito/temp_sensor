@@ -1,1 +1,1 @@
-# temp_sensor
+# temp_sensor for HA mqtt
