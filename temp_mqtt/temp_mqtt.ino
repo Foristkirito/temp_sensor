@@ -26,10 +26,65 @@
 
  */
 #include <SoftwareSerial.h>
+#include <ESP8266WiFi.h>
+#include <PubSubClient.h>
 
 SoftwareSerial mySerial(D5, D6); // RX, TX
 float avgTmp[10];
 int cnt = 0;
+
+const char* ssid = "";
+const char* password = "";
+const char* mqtt_server = "192.168.1.2";
+const int mqttPort = 1884;
+const char* mqttUser = "";
+const char* mqttPassword = "";
+
+WiFiClient espClient;
+PubSubClient client(espClient);
+unsigned long lastMsg = 0;
+#define MSG_BUFFER_SIZE  (50)
+char msg[MSG_BUFFER_SIZE];
+int value = 0;
+
+// Set your Static IP address
+IPAddress local_IP(192, 168, 1, 68);
+// Set your Gateway IP address
+IPAddress gateway(192, 168, 1, 1);
+
+IPAddress subnet(255, 255, 255, 0);
+
+void setup_wifi() {
+
+  delay(10);
+  // We start by connecting to a WiFi network
+  Serial.println();
+  Serial.print("Connecting to ");
+  Serial.println(ssid);
+
+  if (!WiFi.config(local_IP, gateway, subnet)) {
+    Serial.println("STA Failed to configure");
+  }
+
+  // WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  randomSeed(micros());
+
+  Serial.println("");
+  Serial.println("WiFi connected");
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
+}
+
+void callback(char* topic, byte* payload, unsigned int length) {
+  Serial.print("temp no callback needed");
+}
 
 void setup()
 {
@@ -50,6 +105,35 @@ void setup()
     delay(10);
   }
   Serial.println("init done");
+
+  setup_wifi();
+  client.setServer(mqtt_server, mqttPort);
+  client.setCallback(callback);
+}
+
+void reconnect() {
+  // Loop until we're reconnected
+  while (!client.connected()) {
+    Serial.print("Attempting MQTT connection...");
+    // Create a random client ID
+    String clientId = "ESP8266Client-";
+    clientId += String(random(0xffff), HEX);
+    // Attempt to connect
+    if (client.connect(clientId.c_str(), mqttUser, mqttPassword)) {
+      Serial.println("connected");
+      // Once connected, publish an announcement...
+      // client.publish("outTopic", "hello world");
+      // ... and resubscribe
+      // client.subscribe("inTopic");
+      Serial.print("connect success");
+    } else {
+      Serial.print("failed, rc=");
+      Serial.print(client.state());
+      Serial.println(" try again in 5 seconds");
+      // Wait 5 seconds before retrying
+      delay(5000);
+    }
+  }
 }
 
 double getTemp(double inTemp)
@@ -76,5 +160,9 @@ void loop() // run over and over
   for (; i < 10; i++) t_temp += avgTmp[i];
   Serial.println(t_temp/10);
   cnt++;
-  
+  if (!client.connected()) {
+    reconnect();
+  }
+  client.loop();
+  client.publish("kitchen/dhw_temp", String(t_temp/10,4).c_str());
 }
