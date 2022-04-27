@@ -33,7 +33,7 @@ SoftwareSerial mySerial(D5, D6); // RX, TX
 float avgTmp[10];
 int cnt = 0;
 
-const char* ssid = "";
+const char* ssid = "CMCC-xu97";
 const char* password = "";
 const char* mqtt_server = "192.168.1.2";
 const int mqttPort = 1884;
@@ -42,10 +42,8 @@ const char* mqttPassword = "";
 
 WiFiClient espClient;
 PubSubClient client(espClient);
-unsigned long lastMsg = 0;
-#define MSG_BUFFER_SIZE  (50)
-char msg[MSG_BUFFER_SIZE];
-int value = 0;
+
+double preTemp = 0;
 
 // Set your Static IP address
 IPAddress local_IP(192, 168, 1, 68);
@@ -164,5 +162,8 @@ void loop() // run over and over
     reconnect();
   }
   client.loop();
-  client.publish("kitchen/dhw_temp", String(t_temp/10,4).c_str());
+  if ((t_temp/10 - preTemp > 0.5) || (preTemp - t_temp/10 > 0.5)) {
+    client.publish("kitchen/dhw_temp", String(t_temp/10,2).c_str());
+  }
+  preTemp = t_temp/10;
 }
