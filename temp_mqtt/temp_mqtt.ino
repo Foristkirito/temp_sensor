@@ -37,8 +37,8 @@ const char* ssid = "CMCC-xu97";
 const char* password = "";
 const char* mqtt_server = "192.168.1.2";
 const int mqttPort = 1884;
-const char* mqttUser = "";
-const char* mqttPassword = "";
+const char* mqttUser = "sonoff";
+const char* mqttPassword = "sonoff";
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -163,7 +163,8 @@ void loop() // run over and over
   }
   client.loop();
   if ((t_temp/10 - preTemp > 0.5) || (preTemp - t_temp/10 > 0.5)) {
-    client.publish("kitchen/dhw_temp", String(t_temp/10,2).c_str());
+    String l_tmp_data = String(t_temp/10,2);
+    client.publish("kitchen/dhw_temp", l_tmp_data.c_str(), true);
+    preTemp = t_temp/10;
   }
-  preTemp = t_temp/10;
 }
